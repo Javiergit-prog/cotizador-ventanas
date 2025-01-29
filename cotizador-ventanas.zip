@@ -1,0 +1,91 @@
+import { useState, useEffect } from "react";
+
+export default function CotizadorVentanas() {
+  const [ancho, setAncho] = useState(0);
+  const [alto, setAlto] = useState(0);
+  const [cantidad, setCantidad] = useState(1);
+  const [precio, setPrecio] = useState(null);
+  const [costosMateriales, setCostosMateriales] = useState([]);
+
+  // URL del archivo de Google Sheets en formato JSON
+  const googleSheetURL = "https://docs.google.com/spreadsheets/d/10sUhrFTUKdPHzKu_Ge0ivZQyxatHeAQC/gviz/tq?tqx=out:json";
+
+  useEffect(() => {
+    fetch(googleSheetURL)
+      .then((res) => res.text())
+      .then((data) => {
+        const jsonData = JSON.parse(data.substr(47).slice(0, -2));
+        const rows = jsonData.table.rows.map((row) => {
+          return {
+            material: row.c[0]?.v || "", // Nombre del material
+            costoPorMetro: parseFloat(row.c[1]?.v) || 0, // Costo por metro
+          };
+        });
+        setCostosMateriales(rows);
+      })
+      .catch((err) => console.error("Error al obtener los datos de Google Sheets:", err));
+  }, []);
+
+  const calcularPrecio = () => {
+    const areaM2 = (ancho / 100) * (alto / 100);
+    let costoMateriales = 0;
+
+    costosMateriales.forEach((mat) => {
+      costoMateriales += areaM2 * mat.costoPorMetro;
+    });
+
+    const total = costoMateriales * cantidad;
+    setPrecio(total.toFixed(2));
+  };
+
+  const compartirEnWhatsApp = () => {
+    if (precio !== null) {
+      const mensaje = `Hola, estoy interesado en una cotización de ventanas. Detalles:\n- Ancho: ${ancho} cm\n- Alto: ${alto} cm\n- Cantidad: ${cantidad}\n- Precio estimado: $${precio} MXN`;
+      const url = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+      window.open(url, "_blank");
+    }
+  };
+
+  return (
+    <div style={{ padding: "20px", maxWidth: "400px", margin: "auto", fontFamily: "Arial, sans-serif" }}>
+      <h2 style={{ textAlign: "center" }}>Cotizador de Ventanas</h2>
+      <label>Ancho (cm)</label>
+      <input
+        type="number"
+        placeholder="Ancho en cm"
+        value={ancho}
+        onChange={(e) => setAncho(e.target.value)}
+        style={{ display: "block", marginBottom: "10px", width: "100%", padding: "5px" }}
+      />
+      <label>Alto (cm)</label>
+      <input
+        type="number"
+        placeholder="Alto en cm"
+        value={alto}
+        onChange={(e) => setAlto(e.target.value)}
+        style={{ display: "block", marginBottom: "10px", width: "100%", padding: "5px" }}
+      />
+      <label>Cantidad</label>
+      <input
+        type="number"
+        placeholder="Cantidad"
+        value={cantidad}
+        onChange={(e) => setCantidad(e.target.value)}
+        style={{ display: "block", marginBottom: "10px", width: "100%", padding: "5px" }}
+      />
+      <button onClick={calcularPrecio} style={{ display: "block", marginBottom: "10px", width: "100%", padding: "10px", backgroundColor: "#007BFF", color: "white", border: "none", cursor: "pointer" }}>
+        Calcular Cotización
+      </button>
+      {precio !== null && (
+        <div style={{ fontWeight: "bold", marginBottom: "10px", textAlign: "center" }}>
+          Precio estimado: ${precio} MXN
+        </div>
+      )}
+      {precio !== null && (
+        <button onClick={compartirEnWhatsApp} style={{ width: "100%", padding: "10px", backgroundColor: "#25D366", color: "white", border: "none", cursor: "pointer" }}>
+          Compartir en WhatsApp
+        </button>
+      )}
+    </div>
+  );
+}
